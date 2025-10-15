@@ -4,23 +4,30 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-
+/* eslint-disable sort-imports */
 import * as THREE from 'three';
 
-import { XRDevice, metaQuest3 } from 'iwer';
 
+import { ARButton } from 'three/examples/jsm/webxr/ARButton.js';
 import { DevUI } from '@iwer/devui';
 import { GamepadWrapper } from 'gamepad-wrapper';
+
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
+import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory.js';
+import { XRDevice, metaQuest3 } from 'iwer';
+/*
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { VRButton } from 'three/addons/webxr/VRButton.js';
 import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
-
+*/
 export async function init(setupScene = () => {}, onFrame = () => {}) {
 	// iwer setup
 	let nativeWebXRSupport = false;
 	if (navigator.xr) {
-		nativeWebXRSupport = await navigator.xr.isSessionSupported('immersive-vr');
+		nativeWebXRSupport = await navigator.xr.isSessionSupported('immersive-ar');
 	}
 	if (!nativeWebXRSupport) {
 		const xrDevice = new XRDevice(metaQuest3);
@@ -49,7 +56,7 @@ export async function init(setupScene = () => {}, onFrame = () => {}) {
 	document.body.appendChild(container);
 
 	const scene = new THREE.Scene();
-	scene.background = new THREE.Color(0x808080);
+	// scene.background = new THREE.Color(0x808080);
 
 	const camera = new THREE.PerspectiveCamera(
 		50,
@@ -61,9 +68,11 @@ export async function init(setupScene = () => {}, onFrame = () => {}) {
 
 	const controls = new OrbitControls(camera, container);
 	controls.target.set(0, 1.6, 0);
+	
 	controls.update();
 
-	const renderer = new THREE.WebGLRenderer({ antialias: true });
+	//const renderer = new THREE.WebGLRenderer({ antialias: true });
+	const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true});
 	renderer.setPixelRatio(window.devicePixelRatio);
 	renderer.setSize(window.innerWidth, window.innerHeight);
 	renderer.xr.enabled = true;
@@ -86,6 +95,10 @@ export async function init(setupScene = () => {}, onFrame = () => {}) {
 		const raySpace = renderer.xr.getController(i);
 		const gripSpace = renderer.xr.getControllerGrip(i);
 		const mesh = controllerModelFactory.createControllerModel(gripSpace);
+
+		// in AR mode
+		mesh.visible = false;
+		
 		gripSpace.add(mesh);
 		player.add(raySpace, gripSpace);
 		raySpace.visible = false;
@@ -143,5 +156,6 @@ export async function init(setupScene = () => {}, onFrame = () => {}) {
 
 	renderer.setAnimationLoop(animate);
 
-	document.body.appendChild(VRButton.createButton(renderer));
+	// document.body.appendChild(VRButton.createButton(renderer));
+	document.body.appendChild(ARButton.createButton(renderer));
 }

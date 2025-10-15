@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drone Test Interface</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .status-panel {
+            background-color: #f0f0f0;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .control-panel {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        button {
+            padding: 12px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .command-log {
+            height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            background-color: #f8f9fa;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 3px;
+            border-bottom: 1px solid #eee;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        .warning { color: orange; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Drone Test Interface</h1>
+        
+        <div class="status-panel">
+            <h2>Connection Status</h2>
+            <div>
+                <p>Drone: <span id="drone-status">Disconnected</span></p>
+                <p>Battery: <span id="battery-level">Unknown</span></p>
+                <button id="connect-btn">Connect to Drone</button>
+                <button id="check-status-btn">Check Status</button>
+            </div>
+        </div>
+        
+        <div class="control-panel">
+            <h2>Basic Controls</h2>
+            <button id="command-btn" disabled>Initialize SDK</button>
+            <button id="takeoff-btn" disabled>Takeoff</button>
+            <button id="land-btn" disabled>Land</button>
+        </div>
+        
+        <div class="control-panel">
+            <h2>Movement Controls</h2>
+            <button id="up-btn" disabled>Up</button>
+            <button id="forward-btn" disabled>Forward</button>
+            <button id="down-btn" disabled>Down</button>
+            <button id="left-btn" disabled>Left</button>
+            <button id="hover-btn" disabled>Hover</button>
+            <button id="right-btn" disabled>Right</button>
+            <button id="rotate-left-btn" disabled>Rotate Left</button>
+            <button id="backward-btn" disabled>Backward</button>
+            <button id="rotate-right-btn" disabled>Rotate Right</button>
+        </div>
+        
+        <div class="control-panel" style="grid-template-columns: 1fr;">
+            <h2>Emergency Controls</h2>
+            <button id="emergency-btn" style="background-color: #ff4136;">EMERGENCY STOP</button>
+            <button id="queue-status-btn" style="background-color: #0074d9; margin-top: 10px;">Check Queue Status</button>
+        </div>
+        
+        <div>
+            <h2>Command Log</h2>
+            <div class="command-log" id="log-panel"></div>
+        </div>
+    </div>
+
+
+    <script>
+        // This script will run after the bundle is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // State variables
+            let isDroneConnected = false;
+            let batteryLevel = 'Unknown';
+
+            // DOM Elements
+            const droneStatus = document.getElementById('drone-status');
+            const batteryLevelElement = document.getElementById('battery-level');
+            const connectBtn = document.getElementById('connect-btn');
+            const checkStatusBtn = document.getElementById('check-status-btn');
+            const commandBtn = document.getElementById('command-btn');
+            const takeoffBtn = document.getElementById('takeoff-btn');
+            const landBtn = document.getElementById('land-btn');
+            const logPanel = document.getElementById('log-panel');
+            
+            // All movement control buttons
+            const movementButtons = [
+                'up-btn', 'down-btn', 'left-btn', 'right-btn',
+                'forward-btn', 'backward-btn', 'rotate-left-btn', 'rotate-right-btn',
+                'hover-btn'
+            ].map(id => document.getElementById(id));
+
+            // Helper function to log messages
+            function logMessage(message, type = 'info') {
+                const logEntry = document.createElement('div');
+                logEntry.className = `log-entry ${type}`;
+                logEntry.innerText = `[${new Date().toLocaleTimeString()}] ${message}`;
+                logPanel.prepend(logEntry);
+            }
+
+            // Debug logging helper
+            function debugLog(title, data) {
+                console.log(`[DEBUG] ${title}:`, data);
+            }
+
+            // Update UI based on connection status
+            function updateUI() {
+                droneStatus.innerText = isDroneConnected ? 'Connected' : 'Disconnected';
+                droneStatus.style.color = isDroneConnected ? 'green' : 'red';
+                batteryLevelElement.innerText = batteryLevel;
+                
+                // Enable/disable buttons based on connection status
+                commandBtn.disabled = !isDroneConnected;
+                takeoffBtn.disabled = !isDroneConnected;
+                landBtn.disabled = !isDroneConnected;
+                
+                movementButtons.forEach(btn => {
+                    btn.disabled = !isDroneConnected;
+                });
+            }
+
+            // Connect to the drone
+            async function connectDrone() {
+                try {
+                    logMessage('Attempting to connect to drone...', 'info');
+                    debugLog('Connecting to', '/drone/connect');
+                    
+                    const response = await fetch('/drone/connect', {
+                        method: 'POST'
+                    });
+                    
+                    debugLog('Connection response status', response.status);
+                    const data = await response.json();
+                    debugLog('Connection response data', data);
+                    
+                    if (data.success) {
+                        isDroneConnected = true;
+                        logMessage('Drone connected successfully!', 'success');
+                        
+                        // Check battery status
+                        sendCommand('battery?');
+                    } else {
+                        isDroneConnected = false;
+                        logMessage(`Connection failed: ${data.message || 'Unknown error'}`, 'error');
+                    }
+                    
+                    updateUI();
+                } catch (error) {
+                    debugLog('Connection error', error);
+                    logMessage(`Connection error: ${error.message}`, 'error');
+                    isDroneConnected = false;
+                    updateUI();
+                }
+            }
+
+            // Check drone status
+            async function checkStatus() {
+                try {
+                    logMessage('Checking drone status...', 'info');
+                    debugLog('Checking status at', '/drone/status');
+                    
+                    const response = await fetch('/drone/status');
+                    debugLog('Status response status', response.status);
+                    
+                    const data = await response.json();
+                    debugLog('Status response data', data);
+                    
+                    isDroneConnected = data.connected;
+                    if (data.battery) {
+                        batteryLevel = `${data.battery}%`;
+                    }
+                    
+                    logMessage(`Status: ${isDroneConnected ? 'Connected' : 'Disconnected'}`, 'info');
+                    updateUI();
+                } catch (error) {
+                    debugLog('Status check error', error);
+                    logMessage(`Status check error: ${error.message}`, 'error');
+                }
+            }
+
+            // Send command to the drone with improved error handling
+            async function sendCommand(command) {
+                try {
+                    logMessage(`Sending command: ${command}`, 'info');
+                    debugLog('Sending command to', '/drone/control');
+                    debugLog('Command payload', { command });
+                    
+                    const response = await fetch('/drone/control', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ command })
+                    });
+                    
+                    debugLog('Command response status', response.status);
+                    
+                    // Check if the response is JSON
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        logMessage(`Command '${command}' received non-JSON response`, 'warning');
+                        debugLog('Non-JSON response', await response.text());
+                        return { success: false, message: 'Invalid response format' };
+                    }
+                    
+                    const data = await response.json();
+                    debugLog('Command response data', data);
+                    
+                    // Success case
+                    if (data.success) {
+                        logMessage(`Command '${command}' executed successfully`, 'success');
+                        
+                        // Update battery level if this was a battery check
+                        if (command === 'battery?' && data.result) {
+                            batteryLevel = data.result;
+                            updateUI();
+                        }
+                        
+                        return data;
+                    } 
+                    // Handle partial success (status 202)
+                    else if (response.status === 202) {
+                        // Command was received but had an expected error
+                        logMessage(`Command '${command}' encountered a non-critical error: ${data.error || 'Unknown'}`, 'warning');
+                        return data;
+                    }
+                    // Handle failure without throwing
+                    else {
+                        logMessage(`Command '${command}' failed: ${data.message || 'Unknown error'}`, 'error');
+                        
+                        // Check if connection was lost
+                        if (data.connected === false) {
+                            isDroneConnected = false;
+                            updateUI();
+                            logMessage('Connection to drone was lost', 'error');
+                        }
+                        
+                        // Return failure object instead of throwing
+                        return { success: false, message: data.message || 'Unknown error' };
+                    }
+                } catch (error) {
+                    // Network errors and other exceptions
+                    debugLog('Command error', error);
+                    logMessage(`Command '${command}' error: ${error.message}`, 'error');
+                    return { success: false, message: error.message };
+                }
+            }
+
+            // Helper to handle command execution with proper button state management
+            async function executeCommand(command, button) {
+                // Disable button to prevent double-clicks
+                if (button) button.disabled = true;
+                
+                try {
+                    const result = await sendCommand(command);
+                    return result;
+                } finally {
+                    // Re-enable button if it should be enabled based on connection state
+                    if (button && isDroneConnected) button.disabled = false;
+                }
+            }
+
+            // Event listeners
+            connectBtn.addEventListener('click', connectDrone);
+            checkStatusBtn.addEventListener('click', checkStatus);
+            
+            commandBtn.addEventListener('click', () => executeCommand('command', commandBtn));
+            takeoffBtn.addEventListener('click', () => executeCommand('takeoff', takeoffBtn));
+            landBtn.addEventListener('click', () => executeCommand('land', landBtn));
+            
+            document.getElementById('up-btn').addEventListener('click', function() {
+                executeCommand('up 20', this);
+            });
+            
+            document.getElementById('down-btn').addEventListener('click', function() {
+                executeCommand('down 20', this);
+            });
+            
+            document.getElementById('left-btn').addEventListener('click', function() {
+                executeCommand('left 20', this);
+            });
+            
+            document.getElementById('right-btn').addEventListener('click', function() {
+                executeCommand('right 20', this);
+            });
+            
+            document.getElementById('forward-btn').addEventListener('click', function() {
+                executeCommand('forward 20', this);
+            });
+            
+            document.getElementById('backward-btn').addEventListener('click', function() {
+                executeCommand('back 20', this);
+            });
+            
+            document.getElementById('rotate-left-btn').addEventListener('click', function() {
+                executeCommand('ccw 30', this);
+            });
+            
+            document.getElementById('rotate-right-btn').addEventListener('click', function() {
+                executeCommand('cw 30', this);
+            });
+            
+            document.getElementById('hover-btn').addEventListener('click', function() {
+                executeCommand('rc 0 0 0 0', this);
+            });
+            
+            // Emergency stop button
+            document.getElementById('emergency-btn').addEventListener('click', async function() {
+                // Disable button temporarily
+                this.disabled = true;
+                
+                try {
+                    logMessage('Executing emergency stop procedure', 'warning');
+                    debugLog('Emergency stop', 'Resetting command queue');
+                    
+                    // First reset the command queue
+                    try {
+                        const resetResponse = await fetch('/drone/reset', { method: 'POST' });
+                        debugLog('Reset queue response', resetResponse.status);
+                        logMessage('Command queue reset', 'warning');
+                    } catch (resetError) {
+                        debugLog('Reset queue error', resetError);
+                        logMessage(`Failed to reset command queue: ${resetError.message}`, 'error');
+                        // Continue with emergency even if reset fails
+                    }
+                    
+                    // Send emergency command
+                    const result = await sendCommand('emergency');
+                    if (result.success) {
+                        logMessage('Emergency stop executed', 'warning');
+                    } else {
+                        logMessage(`Emergency stop command failed: ${result.message}`, 'error');
+                    }
+                } catch (error) {
+                    debugLog('Emergency procedure error', error);
+                    logMessage(`Emergency stop failed: ${error.message}`, 'error');
+                } finally {
+                    // Always re-enable emergency button
+                    this.disabled = false;
+                }
+            });
+
+            // Queue status check
+            document.getElementById('queue-status-btn').addEventListener('click', async function() {
+                this.disabled = true;
+                
+                try {
+                    debugLog('Checking queue status', '/drone/status');
+                    const response = await fetch('/drone/status');
+                    debugLog('Queue status response', response.status);
+                    
+                    const data = await response.json();
+                    debugLog('Queue status data', data);
+                    
+                    if (data.commandQueue && data.commandQueue.length !== undefined) {
+                        logMessage(`Command queue length: ${data.commandQueue.length}`, 'info');
+                    } else {
+                        logMessage('Command queue status not available', 'info');
+                    }
+                } catch (error) {
+                    debugLog('Queue status error', error);
+                    logMessage(`Failed to check queue status: ${error.message}`, 'error');
+                } finally {
+                    this.disabled = false;
+                }
+            });
+            
+            // Initialize
+            updateUI();
+            logMessage('Drone test interface initialized', 'info');
+            
+            // Check if this page was loaded with webpack
+            if (typeof window.server === 'object') {
+                logMessage('Webpack bundle detected, using bundled server', 'info');
+            } else {
+                logMessage('Using standalone mode', 'info');
+            }
+        });
+    </script>
+</body>
+</html>

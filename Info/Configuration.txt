@@ -1,0 +1,24 @@
+"build": "webpack",
+"dev": "webpack serve",
+"start-server": "node server/main.js",
+"format": "prettier --write ./src/**/*",
+"dev-full": "concurrently \"npm run dev\" \"npm run start-server\""
+
+
+PS C:\Users\chenr> adb devices
+List of devices attached
+2G0YC5ZG720D2W  device
+
+PS C:\Users\chenr>  adb reverse tcp:8081 tcp:8081
+
+PS C:\Users\chenr> foreach($process in (Get-NetTCPConnection -LocalPort 8081 -ErrorAction SilentlyContinue).OwningProcess) { Stop-Process -Id $process -Force }
+
+PS C:\Users\chenr> netstat -ano | findstr :9090
+
+PS C:\Users\chenr> taskkill /PID 26656 /F
+
+#### for testing in headset
+use https://192.168.1.175:8081/DroneInterface.html
+#### for testing in local computer
+use http://localhost:8081/DroneInterface.html
+
