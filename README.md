@@ -1,34 +1,42 @@
 <p align="center">
-    <img src="./tutorial/assets/webxr-first-steps.png" style="max-width:376px"/>
+    <img src="./images/AR_Tello_Simulator.png" style="max-width:376px"/>
 </p>
 
-Welcome to **WebXR First Steps**! This **2-hour** tutorial is designed to help you take your first steps into developing immersive WebXR experiences using [Three.js](https://threejs.org/). Whether you’re a web developer looking to expand your skillset or a hobbyist interested in creating virtual reality (VR) applications, this tutorial will guide you through the fundamentals of building interactive 3D worlds for the web.
+# Augmented Reality Tello Drone Simulator
+This is a web-based XR program that enables user to controll DJI Tello Drone with hands or headset controller.
 
-## What You’ll Build
+## Preparation
 
-By the end of this tutorial, you’ll have created a fully functional WebXR game where players can use VR controllers to shoot targets, track their score, and enjoy an immersive experience complete with sound, vibration, and smooth animations. Here's what the final experience looks like:
+**Hardware**:
+   - XR Headset that supports web browser (I tested with Meta Quest 3)
 
-<figure style="text-align: center;">
-  <img src="./tutorial/assets/targetpractice.gif" style="max-height:376px"/>
-  <figcaption>Target Practice Gameplay</figcaption>
-</figure>
 
-## Setting Up Your Local Development Environment
+   <figure style="text-align: center;">
+      <img src="./images/meta Quest 3.png" style="max-height:376px"/>
+      <figcaption>Meta Quest 3</figcaption>
+      </figure>
+
+   - External WiFi Adapter that enables network connection between computer server and drone (I bought TP-Link Nano USB WiFi Adapter)
+
+   <figure style="text-align: center;">
+      <img src="./images/TP-Link.png" style="max-height:376px"/>
+      <figcaption>TP-Link Archer T3U Nano</figcaption>
+      </figure>
+
+   - Computer that runs on either Linux or Windows 10/11
+
+
+## Set Up Local Environment
 
 To prepare your development environment and get started with building your WebXR experience, follow the steps below:
 
 1. **Clone this repository**:
 
    ```bash
-   git clone git@github.com:meta-quest/webxr-first-steps.git
-   cd webxr-first-steps
+   git clone https://github.com/RayChen666/AR-Tello-Simulator.git
    ```
 
 2. **Verify that you have Node.js and npm installed**:
-
-   - Node.js version: `20.x` or later
-   - npm version: `10.x` or later
-     You can check your versions with these commands:
 
    ```bash
    node -v
@@ -41,13 +49,29 @@ To prepare your development environment and get started with building your WebXR
    npm install
    ```
 
-4. **Run the local development server**:
+4. **Run the local backend server**:
 
    ```bash
    npm run dev
    ```
 
-   After running the above command, your development server will be available at `localhost:8081`.
+5. **Run the WebXR frontend**:
+   ```bash
+   npm run start-server
+   ```
+
+6. **Or run concurrently**:
+   ```bash
+   npm run dev-full
+   ```
+
+7. **Check your local IP address**:
+   ```bash
+   ifconfig | grep "inet " | grep -v 127.0.0.1
+   ```
+
+   After running the above command, your server will be available at `localhost:8081`.
+   If you want to access the program on headset browser, go `your-ip-address:8081`.
 
 ### Developing with a Headset
 
